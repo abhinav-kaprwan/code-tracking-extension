@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
- 
+import axios from 'axios';
+
 let fileTimeMap:{[fileName:string]:number}={};
 let activeFile: string| null = null;
 let startTime:number = Date.now();
 
+const backendURL =""
 
 // function to track time spent on file whenever file switched
 function logFileSwitch(filename:string){
@@ -20,7 +22,17 @@ function logFileSwitch(filename:string){
 	activeFile= filename;
 	startTime = Date.now();
 }
-
+ function sendDataToBackend(){
+	axios.post(backendURL, {
+		data: fileTimeMap
+	})
+	.then((response)=>{
+		console.log("Data sent succesfully",response.data)
+	})
+	.catch((e)=>{
+		console.log("Error sending data",e)
+	})
+ }
 //To track changes in text document
 vscode.workspace.onDidChangeTextDocument((event)=>{
 	if(event.document.fileName ==activeFile){
@@ -36,3 +48,27 @@ vscode.window.onDidChangeTextEditorSelection((event)=>{
 		logFileSwitch(event.textEditor.document.fileName);
 	}
 })
+
+// will send periodically data to backend
+setInterval(()=>{
+	sendDataToBackend();
+},5*60*1000)
+
+//activate
+export function activate(context:vscode.ExtensionContext){
+
+	vscode.window.onDidChangeActiveTextEditor((editor)=>{
+		if (editor) {
+            logFileSwitch(editor.document.fileName);
+        }
+	})
+	let disposable = vscode.commands.registerCommand('extension.sendDataToBackend',()=>{
+		sendDataToBackend();
+	})
+	context.subscriptions.push(disposable);
+}
+
+//deactive
+export function deactivate(){
+	sendDataToBackend();
+}
